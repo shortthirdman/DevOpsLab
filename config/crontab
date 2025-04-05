@@ -1,0 +1,37 @@
+0 1 * * 7 netstat -tuln >> /path/to/log/open_ports.log
+0 2 * * * find /path/to/backup/ -type f -mtime +30 -exec rm {} \;
+
+# Clear System Cache
+0 4 * * * sync; echo 3 > /proc/sys/vm/drop_caches
+
+# Log Rotation
+0 0 * * 0 logrotate /etc/logrotate.conf
+
+# Rotate Database Logs
+0 0 * * 0 mv /var/log/mysql.log /var/log/mysql_$(date +\%F).log && systemctl restart mysql
+
+0 * * * * uptime >> /path/to/log/uptime.log
+
+# Monitor CPU Usage
+*/15 * * * * top -b -n 1 | grep "Cpu(s)" >> /path/to/log/cpu.log
+
+# Kubernetes Pod Health Check
+*/5 * * * * kubectl get pods --all-namespaces > /path/to/log/k8s_pods.log
+
+# Monitor Memory Usage
+*/10 * * * * free -m >> /path/to/log/memory.log
+
+# Sync Files to Remote Server
+0 1 * * * rsync -avz /local/directory/ user@remote:/remote/directory/
+
+# Monitor Website Availability
+*/5 * * * * curl -s -o /dev/null -w "%{http_code}" https://example.com | grep -q "200" || echo "$(date): Website Down" >> /path/to/log/website.log
+
+# Automated SSL Certificate Renewal
+0 0 1 * * certbot renew --quiet
+
+# Clear Temp Files
+0 1 * * * find /tmp -type f -mtime +7 -exec rm {} \;
+
+# Disk Usage Alert
+*/30 * * * * df -h | awk '$5 > 80 {print}' | mail -s "Disk Usage Alert" you@example.com
