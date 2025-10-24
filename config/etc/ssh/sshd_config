@@ -5,3 +5,10 @@ PermitRootLogin no
 
 AllowUsers *
 MaxAuthTries 3
+
+ClientAliveInterval 60
+ClientAliveCountMax 3
+
+UseDNS no
+
+GSSAPIAuthentication no
