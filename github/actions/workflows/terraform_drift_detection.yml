@@ -1,0 +1,147 @@
+name: Terraform Drift Detection
+
+# We can also add some fancy logic to extract this from a Dockerfile
+# or versions.tf so we don't have to continually monitor and bump this.
+env:
+  TF_VERSION: 1.X.X
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "00 6 * * *" # Every day at 06:00 UTC
+
+permissions:
+  # This is required for requesting the JWT and opening issues
+  id-token: write
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  find-terraform-envs:
+    name: 'Find Terraform Directories'
+    runs-on: ubuntu-latest
+    outputs:
+      terraform-envs: $
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4.2.2
+
+      - name: Fetch Environments
+        id: fetch-environments
+        run: |
+          # Create a matrix of Terraform root modules
+          DIRS=$(find . -type f -name '*.tf' -not -path "*/modules/*" -not -path "*/.terraform/*" -exec dirname {} \; | sort -u | jq -R -s -c 'split("\n")[:-1]')
+          echo "dirs=$DIRS" >> "$GITHUB_OUTPUT"
+          echo "Found environments: $DIRS"
+
+  drift-detection:
+    name: 'Drift Detection'
+    runs-on: ubuntu-latest
+    needs: find-terraform-envs
+    if: needs.find-terraform-envs.outputs.terraform-envs != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        tf_dir: $
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4.2.2
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4.1.0
+        with:
+          aws-region: us-east-1
+          role-to-assume: $
+          role-session-name: Drift_Detection
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3.1.2
+        with:
+          terraform_version: $
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        working-directory: $
+        run: terraform init -input=false
+
+      - name: Terraform Drift Detection Plan
+        id: plan
+        working-directory: $
+        shell: bash
+        run: |
+          set +e # Disable exit on error for this step
+          terraform plan -detailed-exitcode -compact-warnings -no-color -input=false -lock-timeout=5m 2>&1 | sed -n '/Terraform will perform the following actions:/,$p' > plan_output.txt
+          EXIT_CODE=${PIPESTATUS[0]}
+          echo "exit_code=$EXIT_CODE" >> "$GITHUB_OUTPUT"
+          echo "EXIT_CODE=$EXIT_CODE" >> "$GITHUB_ENV"
+          # Show the plan output
+          cat plan_output.txt
+          # Set drift detected flag
+          if [ $EXIT_CODE -eq 2 ]; then
+            echo "drift_detected=true" >> "$GITHUB_OUTPUT"
+            echo "Drift detected in $"
+          elif [ $EXIT_CODE -eq 1 ]; then
+            echo "plan_failed=true" >> "$GITHUB_OUTPUT"
+            echo "Plan failed in $"
+          else
+            echo "No drift detected in $"
+          fi
+
+      - name: Create or Update Issue on Drift Detection
+        if: steps.plan.outputs.drift_detected == 'true'
+        uses: actions/github-script@v7.0.1
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            let planOutput = '';
+            try {
+              planOutput = fs.readFileSync(path.join('$', 'plan_output.txt'), 'utf8');
+            } catch (error) {
+              planOutput = 'Could not read plan output';
+            }
+            const title = `Terraform Drift Detected: $`;
+            const driftBody = `## Terraform Drift Detected
+            **Directory:** \`$\`
+            **Detection Time:** ${new Date().toISOString()}
+            **Workflow:** [${context.runId}](${context.payload.repository.html_url}/actions/runs/${context.runId})
+            <details>
+            <summary>Plan Output</summary>
+            \`\`\`
+            ${planOutput}
+            \`\`\`
+            </details>
+            Please review the changes and determine if they should be applied or if the Terraform configuration needs to be updated.`;
+            // Search for existing open drift issue for this directory
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: ['drift-detection']
+            });
+            const existingIssue = issues.data.find(issue =>
+              issue.title.includes('Terraform Drift Detected') &&
+              issue.title.includes('$')
+            );
+            if (existingIssue) {
+              // Update existing issue with new drift info
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssue.number,
+                body: `## New Drift Detected\n\n${driftBody}`
+              });
+              console.log(`Updated existing issue #${existingIssue.number}`);
+            } else {
+              // Create new issue
+              const newIssue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: driftBody,
+                labels: ['terraform', 'drift-detection', 'needs-review']
+              });
+              console.log(`Created new issue #${newIssue.data.number}`);
+            }
+            
