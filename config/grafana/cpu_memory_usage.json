@@ -1,0 +1,38 @@
+{
+  "uid": "cpu_memory_usage",
+  "title": "CPU & Memory Usage Dashboard",
+  "schemaVersion": 30,
+  "refresh": "10s",
+  "panels": [
+    {
+      "id": 1,
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 8 },
+      "type": "timeseries",
+      "title": "CPU Usage by Mode",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "avg by(mode)(irate(node_cpu_seconds_total[5m]))",
+          "legendFormat": "{{mode}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percent" } }
+    },
+    {
+      "id": 2,
+      "gridPos": { "x": 0, "y": 9, "w": 24, "h": 8 },
+      "type": "timeseries",
+      "title": "Memory Usage Over Time",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes",
+          "legendFormat": "{{instance}}",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "bytes" } }
+    }
+  ]
+}

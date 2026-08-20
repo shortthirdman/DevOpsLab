@@ -1,0 +1,38 @@
+{
+  "uid": "container_metrics",
+  "title": "Container Metrics Dashboard",
+  "schemaVersion": 30,
+  "refresh": "5s",
+  "panels": [
+    {
+      "id": 1,
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 8 },
+      "type": "timeseries",
+      "title": "Container CPU Usage",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(rate(container_cpu_usage_seconds_total{container!=""}[5m])) by (container)",
+          "legendFormat": "{{container}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percent" } }
+    },
+    {
+      "id": 2,
+      "gridPos": { "x": 0, "y": 9, "w": 24, "h": 8 },
+      "type": "timeseries",
+      "title": "Container Memory Usage",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(container_memory_usage_bytes) by (container)",
+          "legendFormat": "{{container}}",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "bytes" } }
+    }
+  ]
+}

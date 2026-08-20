@@ -1,0 +1,25 @@
+{
+  "uid": "alerting_incidents",
+  "title": "Alerting & Incidents Dashboard",
+  "schemaVersion": 30,
+  "refresh": "10s",
+  "panels": [
+    {
+      "id": 1,
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 8 },
+      "type": "table",
+      "title": "Active Alerts",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "ALERTS{alertstate=\"firing\"}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showHeader": true
+      },
+      "fieldConfig": { "defaults": { "unit": "none" } }
+    }
+  ]
+}

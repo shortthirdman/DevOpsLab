@@ -1,0 +1,38 @@
+{
+  "uid": "security_compliance",
+  "title": "Security & Compliance Dashboard",
+  "schemaVersion": 30,
+  "refresh": "15s",
+  "panels": [
+    {
+      "id": 1,
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 8 },
+      "type": "timeseries",
+      "title": "Failed Login Attempts",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(rate(failed_login_attempts_total[5m])) by (instance)",
+          "legendFormat": "{{instance}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "none" } }
+    },
+    {
+      "id": 2,
+      "gridPos": { "x": 0, "y": 9, "w": 24, "h": 8 },
+      "type": "timeseries",
+      "title": "Firewall Drops",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(rate(firewall_dropped_packets_total[5m])) by (instance)",
+          "legendFormat": "{{instance}}",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "none" } }
+    }
+  ]
+}
