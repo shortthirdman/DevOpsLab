@@ -1,0 +1,38 @@
+{
+  "uid": "network_traffic",
+  "title": "Network Traffic Dashboard",
+  "schemaVersion": 30,
+  "refresh": "5s",
+  "panels": [
+    {
+      "id": 1,
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "type": "timeseries",
+      "title": "Inbound Traffic",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "rate(node_network_receive_bytes_total[5m])",
+          "legendFormat": "{{device}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "bytes" } }
+    },
+    {
+      "id": 2,
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "type": "timeseries",
+      "title": "Outbound Traffic",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "rate(node_network_transmit_bytes_total[5m])",
+          "legendFormat": "{{device}}",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "bytes" } }
+    }
+  ]
+}
